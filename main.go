@@ -3,6 +3,8 @@ package main
 import (
 	"errors"
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing/transport"
+	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
 	"go/build"
 	"log"
 	"os"
@@ -11,7 +13,11 @@ import (
 )
 
 func detectSSHURL(url string) bool {
-	return strings.HasPrefix(url, "git@")
+
+	if strings.HasPrefix(url, "git@") {
+		return true
+	}
+	return strings.HasPrefix(url, "ssh://")
 }
 
 func detectHTTPSURL(url string) bool {
@@ -20,6 +26,7 @@ func detectHTTPSURL(url string) bool {
 
 func parsePATH(url string) (string, error) {
 	if detectSSHURL(url) {
+		url = strings.ReplaceAll(url, "ssh://", "")
 		url = strings.ReplaceAll(url, "git@", "")
 		url = strings.ReplaceAll(url, ":", "/")
 		url = strings.ReplaceAll(url, ".git", "")
@@ -35,9 +42,37 @@ func parsePATH(url string) (string, error) {
 	return "", errors.New("unknown url type")
 }
 
-func gitClone(url string, path string) error {
-	_, err := git.PlainClone(path, false, &git.CloneOptions{
-		URL: url,
+func detectKeys() (string, error) {
+	var keyPath string
+	home := os.Getenv("HOME")
+	keyPath = filepath.Join(home, ".ssh/id_rsa")
+	if _, err := os.Stat(keyPath); !os.IsNotExist(err) {
+		return keyPath, nil
+	}
+	keyPath = filepath.Join(home, ".ssh/id_ed25519")
+	if _, err := os.Stat(keyPath); !os.IsNotExist(err) {
+		return keyPath, nil
+	}
+
+	return "", errors.New("no ssh keys found")
+}
+
+func gitClone(url string, path string, useSSH bool) error {
+	var err error
+	var auth transport.AuthMethod
+	if useSSH {
+		keyPath, err := detectKeys()
+		if err != nil {
+			return err
+		}
+		auth, err = ssh.NewPublicKeysFromFile("git", keyPath, "")
+		if err != nil {
+			return err
+		}
+	}
+	_, err = git.PlainClone(path, false, &git.CloneOptions{
+		Auth: auth,
+		URL:  url,
 	})
 
 	return err
@@ -69,13 +104,16 @@ func main() {
 		log.Println("please provide a url")
 		return
 	}
+	url := args[1]
+	var useSSH bool
 	if len(args) == 3 {
 		if args[2] == "ssh" {
+			useSSH = true
 			log.Println("using ssh")
-			args[1] = replaceHTTPS(args[1])
+			url = replaceHTTPS(args[1])
+			url = "ssh://" + url + ".git"
 		}
 	}
-	url := args[1]
 	path, err := parsePATH(url)
 	if err != nil {
 		log.Println(err)
@@ -92,10 +130,7 @@ func main() {
 		log.Println(err)
 		return
 	}
-	if args[2] == "ssh" {
-		url = url + ".git"
-	}
-	err = gitClone(url, path)
+	err = gitClone(url, path, useSSH)
 	if err != nil {
 		log.Println(url, err)
 		return
