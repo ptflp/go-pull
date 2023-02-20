@@ -62,6 +62,7 @@ func main() {
 	// get url from command line arguments
 	args := os.Args
 	if len(args) < 2 {
+		log.Println("please provide a url")
 		return
 	}
 	url := args[1]
@@ -75,6 +76,7 @@ func main() {
 		goPATH = build.Default.GOPATH
 	}
 	path = absPATH(goPATH, path)
+	log.Println("path:", path)
 	err = preparePath(path)
 	if err != nil {
 		log.Println(err)
