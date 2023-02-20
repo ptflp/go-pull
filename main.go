@@ -95,7 +95,7 @@ func main() {
 
 	err = gitClone(url, path)
 	if err != nil {
-		log.Println(err)
+		log.Println(url, err)
 		return
 	}
 }
