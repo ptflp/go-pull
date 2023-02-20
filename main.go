@@ -71,6 +71,7 @@ func main() {
 	}
 	if len(args) == 3 {
 		if args[2] == "ssh" {
+			log.Println("using ssh")
 			args[1] = replaceHTTPS(args[1])
 		}
 	}
