@@ -58,12 +58,21 @@ func absPATH(goPATH, path string) string {
 	return filepath.Join(goPATH, "src", path)
 }
 
+func replaceHTTPS(url string) string {
+	return strings.ReplaceAll(url, "https://", "git@")
+}
+
 func main() {
 	// get url from command line arguments
 	args := os.Args
 	if len(args) < 2 {
 		log.Println("please provide a url")
 		return
+	}
+	if len(args) == 3 {
+		if args[2] == "ssh" {
+			args[1] = replaceHTTPS(args[1])
+		}
 	}
 	url := args[1]
 	path, err := parsePATH(url)
