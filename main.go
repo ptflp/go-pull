@@ -92,7 +92,9 @@ func main() {
 		log.Println(err)
 		return
 	}
-
+	if args[2] == "ssh" {
+		url = url + ".git"
+	}
 	err = gitClone(url, path)
 	if err != nil {
 		log.Println(url, err)
